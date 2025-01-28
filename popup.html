@@ -3,57 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Resumidor de Contenido</title>
+    <title>TL;DR.ai</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="popup">
-        <h1>Resumidor de Contenido</h1>
-        
+        <div id="language-selector">
+            <select id="languageSelect">
+                <option value="es">Español</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+        <h1 data-i18n="title">TL;DR.ai</h1>
+        <!-- Información del modelo actual -->
+        <div id="modelInfo" class="model-info"></div>
         <!-- Sección de API Key y selección de modelo -->
         <div id="apiKeyInput">
-            <label for="apiKey">API Key:</label>
+            <label for="apiKey" data-i18n="apiKeyLabel">API Key:</label>
             <input type="text" id="apiKey" placeholder="Ingresa tu API key">
             <select id="modelSelect">
                 <option value="gemini">Google Gemini (Gratuito)</option>
                 <option value="openai">OpenAI GPT-3.5 (Pago)</option>
             </select>
-            <button id="saveKey">Guardar</button>
+            <button id="saveKey" data-i18n="saveButton">Guardar</button>
         </div>
 
         <!-- Sección de acciones -->
         <div id="actions">
-            <button id="summarize">Resumir</button>
-            <button id="changeKey" style="display: none;">Cambiar API Key</button>
+            <button id="summarize" data-i18n="summarizeButton">Resumir</button>
+            <button id="changeKey" style="display: none;" data-i18n="changeKeyButton">Cambiar API Key</button>
             <div id="loader" class="loader"></div>
         </div>
 
-        <!-- Información del modelo actual -->
-        <div id="modelInfo" class="model-info"></div>
-
         <!-- Sección de resultados -->
         <div id="results">
-            <h2>Resultados</h2>
+            <h2 data-i18n="resultsTitle">Resultados</h2>
             <div id="summary" class="result-section">
-                <strong>Resumen:</strong>
-                <p>El resumen aparecerá aquí...</p>
+                <div class="section-header" data-i18n="summaryTitle">Resumen:</div>
+                <div class="section-content">El resumen aparecerá aquí...</div>
             </div>
             <div id="analysis" class="result-section">
-                <strong>Análisis:</strong>
-                <p>El análisis aparecerá aquí...</p>
+                <div class="section-header" data-i18n="analysisTitle">Análisis:</div>
+                <div class="section-content">El análisis aparecerá aquí...</div>
             </div>
             <div id="comments" class="result-section">
-                <strong>Comentarios:</strong>
-                <p>El resumen de comentarios aparecerá aquí...</p>
+                <div class="section-header" data-i18n="commentsTitle">Comentarios:</div>
+                <div class="section-content">El resumen de comentarios aparecerá aquí...</div>
             </div>
             <div id="url" class="result-section">
-                <strong>URL:</strong>
-                <p>La URL aparecerá aquí...</p>
+                <div class="section-header" data-i18n="urlTitle">URL:</div>
+                <div class="section-content">La URL aparecerá aquí...</div>
             </div>
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- Scripts en orden correcto -->
+    <script src="translations.js"></script>
+    <script src="storage-manager.js"></script>
     <script src="ai-service.js"></script>
     <script src="popup.js"></script>
 </body>

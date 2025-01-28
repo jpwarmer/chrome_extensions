@@ -1,14 +1,17 @@
-import { getBrowserLanguage } from './language-utils.js';
-
-export const translations = {
+// Definir las traducciones como variable global
+window.translations = {
     es: {
-        title: "Resumidor de Contenido",
+        title: "TL;DR.ai (Too Long; Didn't Read + AI)",  // Too Long; Didn't Read + AI
         apiKeyLabel: "API Key:",
         apiKeyPlaceholder: "Ingresa tu API key",
         saveButton: "Guardar",
         summarizeButton: "Resumir",
-        changeKeyButton: "Seleccionar Modelo",
+        changeKeyButton: "Cambiar modelo",
         resultsTitle: "Resultados",
+        summaryTitle: "Resumen:",
+        analysisTitle: "Análisis:",
+        commentsTitle: "Comentarios:",
+        urlTitle: "URL:",
         summaryPlaceholder: "El resumen aparecerá aquí...",
         analysisPlaceholder: "El análisis aparecerá aquí...",
         commentsPlaceholder: "El resumen de comentarios aparecerá aquí...",
@@ -20,20 +23,29 @@ export const translations = {
         errorNoKey: "Por favor, ingresa tu API Key.",
         errorProcessing: "Error al procesar el contenido:",
         languageSelect: "Idioma:",
+        processingText: "Procesando...",
+        noContentError: "No se encontró suficiente contenido para analizar.",
         languages: {
             es: "Español",
-            en: "Inglés"
+            en: "English"
         },
-        processingText: "Procesando..."
+        summaryTitle: "Resumen:",
+        analysisTitle: "Análisis:",
+        commentsTitle: "Comentarios:",
+        urlTitle: "URL:"
     },
     en: {
-        title: "Content Summarizer",
+        title: "TL;DR.ai (Too Long; Didn't Read + AI)",  // Funciona igual en ambos idiomas
         apiKeyLabel: "API Key:",
         apiKeyPlaceholder: "Enter your API key",
         saveButton: "Save",
         summarizeButton: "Summarize",
-        changeKeyButton: "Select Model",
+        changeKeyButton: "Change model",
         resultsTitle: "Results",
+        summaryTitle: "Summary:",
+        analysisTitle: "Analysis:",
+        commentsTitle: "Comments:",
+        urlTitle: "URL:",
         summaryPlaceholder: "Summary will appear here...",
         analysisPlaceholder: "Analysis will appear here...",
         commentsPlaceholder: "Comments summary will appear here...",
@@ -45,14 +57,45 @@ export const translations = {
         errorNoKey: "Please enter your API Key.",
         errorProcessing: "Error processing content:",
         languageSelect: "Language:",
+        processingText: "Processing...",
+        noContentError: "Not enough content found to analyze.",
         languages: {
             es: "Spanish",
             en: "English"
-        },
-        processingText: "Processing..."
+        }
     }
 };
 
-export function getTranslation(key, language = getBrowserLanguage()) {
-    return translations[language]?.[key] || translations.en[key];
+function getBrowserLanguage() {
+    const language = navigator.language.split('-')[0];
+    return ['en', 'es'].includes(language) ? language : 'en';
+}
+
+function isExtensionContext() {
+    return typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
+}
+
+function getUserLanguage() {
+    if (isExtensionContext() && chrome.storage) {
+        return new Promise((resolve) => {
+            chrome.storage.local.get(['preferredLanguage'], (result) => {
+                resolve(result.preferredLanguage || getBrowserLanguage());
+            });
+        });
+    }
+    return Promise.resolve(getBrowserLanguage());
+}
+
+function setUserLanguage(language) {
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+        return new Promise((resolve) => {
+            chrome.storage.local.set({ preferredLanguage: language }, resolve);
+        });
+    }
+    return Promise.resolve();
+}
+
+async function getTranslation(key, language = null) {
+    const userLang = language || await getUserLanguage();
+    return translations[userLang]?.[key] || translations.en[key];
 } 

@@ -1,6 +1,6 @@
 {
     "manifest_version": 3,
-    "name": "Content Summarizer",
+    "name": "TL;DR.ai",
     "version": "1.0",
     "description": "Resume, analyze, and summarize comments on web pages quickly.",
     "permissions": [

@@ -1,6 +1,11 @@
-import { getBrowserLanguage } from './language-utils.js';
+// Funciones de utilidad para el manejo del idioma
+function getBrowserLanguage() {
+    const language = navigator.language.split('-')[0];
+    return ['en', 'es'].includes(language) ? language : 'en';
+}
 
-export class StorageManager {
+// Clase StorageManager global
+class StorageManager {
     static async getLanguage() {
         if (!chrome?.storage?.local) {
             return getBrowserLanguage();
@@ -46,4 +51,7 @@ export class StorageManager {
             });
         });
     }
-} 
+}
+
+// Hacer StorageManager disponible globalmente
+window.StorageManager = StorageManager; 
