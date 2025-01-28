@@ -45,30 +45,39 @@ floatingButton.addEventListener('click', () => {
 
 // Función optimizada para extraer comentarios
 function extractComments() {
-    const commentSelectors = [
-        '.comment',
-        '.comments-section',
-        '#comments',
-        '[data-testid="comment"]',
-        '.discussion-content',
-        '.Comment',
-        'ytd-comment-thread-renderer',
-        '.post-content'
+    // Buscar elementos que contengan palabras clave relacionadas con comentarios
+    const keywordSelectors = [
+        '[class*="comment" i]',     // i flag hace la búsqueda case-insensitive
+        '[class*="content" i]',
+        '[id*="comment" i]',
+        '[id*="content" i]',
+        '[data-testid*="comment" i]',
+        '[aria-label*="comment" i]',
+        '[aria-label*="comentario" i]'  // Para sitios en español
     ];
 
-    // Usar un Set para evitar duplicados
     const commentsSet = new Set();
     
-    // Usar un solo querySelectorAll con todos los selectores
-    const selector = commentSelectors.join(', ');
+    const selector = keywordSelectors.join(', ');
     const elements = document.querySelectorAll(selector);
     
     elements.forEach(element => {
+        // Ignorar elementos que probablemente sean contenedores o metadatos
+        if (element.classList.toString().toLowerCase().includes('container') ||
+            element.classList.toString().toLowerCase().includes('wrapper') ||
+            element.classList.toString().toLowerCase().includes('actions') ||
+            element.classList.toString().toLowerCase().includes('header')) {
+            return;
+        }
+
         const text = element.textContent.trim();
-        if (text) commentsSet.add(text);
+        // Filtrar contenido válido (más de 20 caracteres y menos de 5000)
+        if (text && text.length > 20 && text.length < 5000) {
+            commentsSet.add(text);
+        }
     });
 
-    return Array.from(commentsSet).join('\n');
+    return Array.from(commentsSet).join('\n\n');
 }
 
 // Escuchar mensajes del popup de manera más eficiente
