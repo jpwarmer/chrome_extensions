@@ -276,4 +276,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         ];
         return defaultTexts.includes(text);
     }
+
+    // Agregar manejador para el botón de cerrar
+    document.getElementById('closeButton').addEventListener('click', () => {
+        window.parent.postMessage('closeModal', '*');
+    });
 });

@@ -1,8 +1,9 @@
 // Crear el botón flotante solo una vez
 const floatingButton = document.createElement('button');
 floatingButton.className = 'floating-button';
-floatingButton.innerHTML = '📝';
-floatingButton.title = 'Resumir Contenido';
+// Usar un emoji que representa resumir/comprimir
+floatingButton.innerHTML = '✂️'; // Opciones: 📝 (nota), 📄 (documento), 🔍 (búsqueda), ✂️ (tijeras), 📊 (gráfico), 📋 (clipboard)
+floatingButton.title = 'TL;DR.ai - Resumir Contenido';
 
 // Crear el modal solo una vez
 const modal = document.createElement('div');
@@ -96,4 +97,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
     }
     return true;
+});
+
+// Escuchar mensajes del iframe
+window.addEventListener('message', (event) => {
+    if (event.data === 'closeModal') {
+        modal.style.display = 'none';
+    }
 });
