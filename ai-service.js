@@ -26,7 +26,7 @@ class AIService {
         const prompt = `
             Analiza el siguiente contenido web y proporciona tres secciones en español:
             1. RESUMEN: Un resumen conciso del contenido principal
-            2. ANÁLISIS: Un análisis del estilo de escritura y posible sesgo
+            2. ANÁLISIS: Un análisis en busca de sesgos (politicos, sociales, etc), tambien advierte si crees que hay desinformacion, propaganda o informacion controvertida.
             3. COMENTARIOS: Un resumen de los puntos clave de los comentarios (si hay)
 
             URL: ${url}
