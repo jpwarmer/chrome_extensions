@@ -43,7 +43,10 @@
 
 /* Estilos para el contenido del popup */
 #results {
-  margin-top: 20px;
+  margin-top: 15px;
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 10px;
 }
 
 #results > div {
@@ -55,8 +58,12 @@
 
 #popup {
     width: 520px;
+    max-height: 600px;
     padding: 15px;
     font-family: Arial, sans-serif;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
 #language-selector {
@@ -168,4 +175,23 @@ h2 {
 .loading {
     opacity: 0.7;
     pointer-events: none;
+}
+
+/* Estilizar el scrollbar */
+#results::-webkit-scrollbar {
+    width: 8px;
+}
+
+#results::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+#results::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 4px;
+}
+
+#results::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }

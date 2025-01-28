@@ -27,6 +27,7 @@ iframe.style.cssText = `
     height: 600px;
     border: none;
     border-radius: 8px;
+    overflow-y: hidden;
 `;
 iframe.src = chrome.runtime.getURL('popup.html');
 modal.appendChild(iframe);
