@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resumidor de Contenido</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="popup">
+        <h1>Resumidor de Contenido</h1>
+        
+        <!-- Sección de API Key y selección de modelo -->
+        <div id="apiKeyInput">
+            <label for="apiKey">API Key:</label>
+            <input type="text" id="apiKey" placeholder="Ingresa tu API key">
+            <select id="modelSelect">
+                <option value="gemini">Google Gemini (Gratuito)</option>
+                <option value="openai">OpenAI GPT-3.5 (Pago)</option>
+            </select>
+            <button id="saveKey">Guardar</button>
+        </div>
+
+        <!-- Sección de acciones -->
+        <div id="actions">
+            <button id="summarize">Resumir</button>
+            <button id="changeKey" style="display: none;">Cambiar API Key</button>
+            <div id="loader" class="loader"></div>
+        </div>
+
+        <!-- Información del modelo actual -->
+        <div id="modelInfo" class="model-info"></div>
+
+        <!-- Sección de resultados -->
+        <div id="results">
+            <h2>Resultados</h2>
+            <div id="summary" class="result-section">
+                <strong>Resumen:</strong>
+                <p>El resumen aparecerá aquí...</p>
+            </div>
+            <div id="analysis" class="result-section">
+                <strong>Análisis:</strong>
+                <p>El análisis aparecerá aquí...</p>
+            </div>
+            <div id="comments" class="result-section">
+                <strong>Comentarios:</strong>
+                <p>El resumen de comentarios aparecerá aquí...</p>
+            </div>
+            <div id="url" class="result-section">
+                <strong>URL:</strong>
+                <p>La URL aparecerá aquí...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="ai-service.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>

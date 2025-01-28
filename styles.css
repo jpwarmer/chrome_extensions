@@ -1,0 +1,140 @@
+/* Botón flotante */
+.floating-button {
+  position: fixed;
+  right: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10000;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  transition: all 0.3s ease;
+}
+
+.floating-button:hover {
+  background: #45a049;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+/* Modal/Popup */
+#summary-modal {
+  position: fixed;
+  right: 80px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 600px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 10001;
+  padding: 20px;
+  display: none;
+  font-family: Arial, sans-serif;
+}
+
+#summary-modal.active {
+  display: block;
+}
+
+/* Estilos para el contenido del popup */
+#results {
+  margin-top: 20px;
+}
+
+#results > div {
+  margin-bottom: 15px;
+  padding: 10px;
+  border-radius: 4px;
+  background: #f5f5f5;
+}
+
+#apiKeyInput {
+  margin-bottom: 20px;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 1;
+  padding: 10px 0;
+}
+
+#apiKeyInput input {
+  width: 70%;
+  padding: 8px;
+  margin-right: 10px;
+}
+
+button {
+  padding: 8px 16px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #45a049;
+}
+
+h1 {
+  font-size: 1.5em;
+  margin-bottom: 15px;
+}
+
+h2 {
+  font-size: 1.2em;
+  margin-bottom: 10px;
+}
+
+#modelSelect {
+  margin: 10px 0;
+  padding: 8px;
+  width: 70%;
+}
+
+#modelInfo {
+  background: #f0f0f0;
+  padding: 5px 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.loader {
+    display: none;
+    width: 24px;
+    height: 24px;
+    border: 3px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 3px solid #4CAF50;
+    animation: spin 1s linear infinite;
+    margin: 10px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+button:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+}
+
+.loading {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* Ajustar el popup para evitar scrollbar */
+#popup {
+    width: 520px;
+    padding: 10px;
+    font-family: Arial, sans-serif;
+    max-height: 600px;
+    overflow-y: auto;
+}

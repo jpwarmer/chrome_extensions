@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Test Resumidor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>Página de prueba</h1>
+    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>
+    <p>Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+    
+    <!-- Simular el objeto chrome.runtime que usa content.js -->
+    <script>
+        window.chrome = {
+            runtime: {
+                getURL: (path) => path,
+                onMessage: {
+                    addListener: (callback) => {
+                        window.messageCallback = callback;
+                    }
+                }
+            }
+        };
+        console.log('Chrome runtime simulado creado');
+    </script>
+
+    <!-- Cargar content.js -->
+    <script src="content.js"></script>
+</body>
+</html> 

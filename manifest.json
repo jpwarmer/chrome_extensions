@@ -1,0 +1,33 @@
+{
+    "manifest_version": 3,
+    "name": "Content Summarizer",
+    "version": "1.0",
+    "description": "Resume, analyze, and summarize comments on web pages quickly.",
+    "permissions": [
+      "activeTab",
+      "storage",
+      "scripting"
+    ],
+    "host_permissions": [
+      "<all_urls>"
+    ],
+    "action": {
+      "default_popup": "popup.html",
+      "default_icon": {
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+      }
+    },
+    "content_scripts": [{
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["styles.css"]
+    }],
+    "web_accessible_resources": [{
+      "resources": ["popup.html"],
+      "matches": ["<all_urls>"]
+    }],
+    "content_security_policy": {
+      "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+    }
+  }
