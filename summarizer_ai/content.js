@@ -83,27 +83,48 @@ function extractComments() {
 // Escuchar mensajes del popup de manera más eficiente
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "getPageContent") {
-        requestAnimationFrame(() => {
-            // Obtener el contenido principal
+        // Agregar un timeout de 10 segundos
+        const timeoutId = setTimeout(() => {
+            sendResponse({
+                error: "No se pudo obtener respuesta. Por favor, intente nuevamente más tarde.",
+                url: window.location.href
+            });
+        }, 10000);
+
+        try {
             const content = document.body.innerText.trim();
             const comments = extractComments();
             const url = window.location.href;
             
-            // Validar si hay contenido para analizar
-            if (!content || content.length < 50) { // Ajusta este número según necesites
+            // Limpiar el timeout ya que obtuvimos respuesta
+            clearTimeout(timeoutId);
+            
+            if (!content || content.length < 50) {
                 sendResponse({
                     error: "No se encontró suficiente contenido para analizar en esta página.",
                     url: url
                 });
-                return;
+                return true;
             }
             
+            const maxLength = 50000;
+            const truncatedContent = content.length > maxLength ? 
+                content.substring(0, maxLength) + "..." : 
+                content;
+            
             sendResponse({
-                content: content,
+                content: truncatedContent,
                 comments: comments,
                 url: url
             });
-        });
+        } catch (error) {
+            // Limpiar el timeout en caso de error
+            clearTimeout(timeoutId);
+            sendResponse({
+                error: "Error al procesar el contenido. Por favor, intente nuevamente más tarde.",
+                url: window.location.href
+            });
+        }
     }
     return true;
 });
