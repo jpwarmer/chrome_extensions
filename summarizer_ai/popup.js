@@ -7,13 +7,11 @@ document.addEventListener("DOMContentLoaded", async () => {
         summarizeButton: document.getElementById('summarize'),
         changeKeyButton: document.getElementById('changeKey'),
         apiKeyDiv: document.getElementById('apiKeyInput'),
-        modelInfo: document.getElementById('modelInfo'),
-        summaryDiv: document.getElementById('summary'),
-        analysisDiv: document.getElementById('analysis'),
-        commentsDiv: document.getElementById('comments'),
-        urlDiv: document.getElementById('url'),
         loader: document.getElementById('loader'),
         languageSelect: document.getElementById('languageSelect'),
+        settingsExpandedBody: document.getElementById('settingsExpandedBody'),
+        settingsExpandToggle: document.getElementById('settingsExpandToggle'),
+        settingsModelSummary: document.getElementById('settingsModelSummary'),
         sections: {
             summary: {
                 content: document.querySelector('#summary .section-content'),
@@ -43,27 +41,176 @@ document.addEventListener("DOMContentLoaded", async () => {
         }
     }
 
+    /** Textos del idioma seleccionado en el selector. */
+    function t() {
+        return window.translations[elements.languageSelect.value];
+    }
+
+    /**
+     * Escribe en las áreas de resultado sin tocar cabeceras (.section-header).
+     * @param {string} [url] - Si se omite, la fila URL no se modifica.
+     */
+    function fillResultSections(summary, analysis, comments, url) {
+        elements.sections.summary.content.textContent = summary;
+        elements.sections.analysis.content.textContent = analysis;
+        elements.sections.comments.content.textContent = comments;
+        if (url !== undefined) {
+            elements.sections.url.content.textContent = url;
+        }
+    }
+
+    function resetResultPlaceholders() {
+        const lang = elements.languageSelect.value;
+        const tr = window.translations[lang];
+        if (!tr) {
+            return;
+        }
+        elements.sections.summary.content.textContent = tr.summaryPlaceholder;
+        elements.sections.analysis.content.textContent = tr.analysisPlaceholder;
+        elements.sections.comments.content.textContent = tr.commentsPlaceholder;
+        elements.sections.url.content.textContent = tr.urlPlaceholder;
+    }
+
+    /**
+     * Solo persistir resultados válidos: no errores de API ni respuestas sustitutas sin análisis real.
+     */
+    function shouldPersistAnalysis(analysis) {
+        if (!analysis || typeof analysis.summary !== 'string') {
+            return false;
+        }
+        const s = analysis.summary.trim();
+        const low = s.toLowerCase();
+        if (low.startsWith('error:')) {
+            return false;
+        }
+        if (s.includes('No hay suficiente contenido para analizar')) {
+            return false;
+        }
+        if (s.includes('Not enough content')) {
+            return false;
+        }
+        return true;
+    }
+
+    /** Si hay análisis guardado para esta pestaña y modelo, lo muestra; si no, placeholders. */
+    async function loadCachedResultsForActiveTab() {
+        try {
+            if (typeof chrome === 'undefined' || !chrome.tabs?.query) {
+                return;
+            }
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            const tab = tabs[0];
+            if (!tab?.url) {
+                return;
+            }
+            const u = tab.url;
+            if (
+                u.startsWith('chrome://') ||
+                u.startsWith('chrome-extension://') ||
+                u.startsWith('edge://') ||
+                u.startsWith('about:')
+            ) {
+                resetResultPlaceholders();
+                return;
+            }
+            const model = elements.modelSelect.value;
+            const cached = await window.StorageManager.getPageAnalysisCache(u, model);
+            if (cached) {
+                fillResultSections(
+                    cached.summary,
+                    cached.analysis,
+                    cached.commentsSummary,
+                    cached.url || u
+                );
+            } else {
+                resetResultPlaceholders();
+            }
+        } catch (e) {
+            console.warn('loadCachedResultsForActiveTab', e);
+        }
+    }
+
+    /** Muestra u oculta bloque de API key y botón «Cambiar modelo» (solo atributo hidden; cumple CSP). */
+    function setKeyPanelState(showKeyBlock, showChangeKey) {
+        if (elements.apiKeyDiv) {
+            elements.apiKeyDiv.hidden = !showKeyBlock;
+        }
+        if (elements.changeKeyButton) {
+            const collapsed = elements.settingsExpandedBody?.hidden;
+            elements.changeKeyButton.hidden = collapsed ? true : !showChangeKey;
+        }
+    }
+
+    function updateCollapsedModelSummary() {
+        const sel = elements.modelSelect;
+        const sum = elements.settingsModelSummary;
+        if (!sel || !sum) {
+            return;
+        }
+        const opt = sel.options[sel.selectedIndex];
+        sum.textContent = opt ? ` — ${opt.text}` : '';
+    }
+
+    /**
+     * @param {boolean} expanded - true = panel de configuración visible
+     * @param {{ editKey?: boolean }} [opts] - si editKey, forzar fila de clave (botón «Cambiar modelo»)
+     */
+    function setSettingsExpanded(expanded, opts = {}) {
+        if (elements.settingsExpandedBody) {
+            elements.settingsExpandedBody.hidden = !expanded;
+        }
+        if (elements.settingsExpandToggle) {
+            elements.settingsExpandToggle.hidden = expanded;
+        }
+        updateCollapsedModelSummary();
+
+        if (expanded) {
+            if (opts.editKey) {
+                setKeyPanelState(true, false);
+            } else {
+                chrome.storage.local.get(['apiKeys'], (result) => {
+                    if (chrome.runtime.lastError) {
+                        return;
+                    }
+                    const apiKeys = result.apiKeys || {};
+                    const m = elements.modelSelect.value;
+                    if (apiKeys[m]) {
+                        elements.apiKeyInput.value = apiKeys[m];
+                        setKeyPanelState(false, true);
+                    } else {
+                        setKeyPanelState(true, false);
+                    }
+                });
+            }
+        } else if (elements.changeKeyButton) {
+            elements.changeKeyButton.hidden = true;
+        }
+    }
+
     function setLoading(isLoading) {
         if (elements.loader) {
-            elements.loader.style.display = isLoading ? "block" : "none";
+            elements.loader.hidden = !isLoading;
+            elements.loader.setAttribute('aria-hidden', isLoading ? 'false' : 'true');
         }
         if (elements.summarizeButton) {
             elements.summarizeButton.disabled = isLoading;
-            const t = window.translations[elements.languageSelect.value];
-            elements.summarizeButton.textContent = isLoading ? t.processingText : t.summarizeButton;
+            const tr = t();
+            elements.summarizeButton.textContent = isLoading ? tr.processingText : tr.summarizeButton;
         }
     }
 
     // Esperar a que las traducciones estén disponibles
-    const waitForTranslations = () => {
-        return new Promise((resolve) => {
-            if (window.translations) {
-                resolve();
-            } else {
-                setTimeout(() => waitForTranslations().then(resolve), 50);
-            }
+    const waitForTranslations = () =>
+        new Promise((resolve) => {
+            const poll = () => {
+                if (window.translations) {
+                    resolve();
+                } else {
+                    setTimeout(poll, 50);
+                }
+            };
+            poll();
         });
-    };
 
     await waitForTranslations();
 
@@ -74,38 +221,50 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     // Cargar configuración guardada
     chrome.storage.local.get(['apiKeys', 'currentModel'], (result) => {
+        if (chrome.runtime.lastError) {
+            console.warn(chrome.runtime.lastError.message);
+            return;
+        }
         const apiKeys = result.apiKeys || {};
         const currentModel = result.currentModel || 'gemini';
-        
+
         elements.modelSelect.value = currentModel;
         if (apiKeys[currentModel]) {
-            elements.apiKeyDiv.style.display = 'none';
-            elements.changeKeyButton.style.display = 'inline-block';
+            setKeyPanelState(false, true);
             elements.apiKeyInput.value = apiKeys[currentModel];
-            updateModelInfo(currentModel);
         } else {
-            elements.apiKeyDiv.style.display = 'block';
-            elements.changeKeyButton.style.display = 'none';
-            elements.apiKeyInput.value = ''; // Limpiar el input si no hay key para este modelo
+            setKeyPanelState(true, false);
+            elements.apiKeyInput.value = '';
         }
+        loadCachedResultsForActiveTab();
     });
 
     // Event Listeners
     elements.modelSelect.addEventListener('change', (e) => {
         const selectedModel = e.target.value;
-        
-        // Solo cargar la API key correspondiente, sin actualizar el indicador
-        chrome.storage.local.get(['apiKeys'], (result) => {
-            const apiKeys = result.apiKeys || {};
-            if (apiKeys[selectedModel]) {
-                elements.apiKeyInput.value = apiKeys[selectedModel];
-                elements.apiKeyDiv.style.display = 'none';
-                elements.changeKeyButton.style.display = 'inline-block';
-            } else {
-                elements.apiKeyInput.value = '';
-                elements.apiKeyDiv.style.display = 'block';
-                elements.changeKeyButton.style.display = 'none';
+
+        // Persistir el modelo activo para que «Resumir» use el mismo que el desplegable
+        chrome.storage.local.set({ currentModel: selectedModel }, () => {
+            if (chrome.runtime.lastError) {
+                console.warn(chrome.runtime.lastError.message);
+                return;
             }
+            chrome.storage.local.get(['apiKeys'], (result) => {
+                if (chrome.runtime.lastError) {
+                    console.warn(chrome.runtime.lastError.message);
+                    return;
+                }
+                const apiKeys = result.apiKeys || {};
+                if (apiKeys[selectedModel]) {
+                    elements.apiKeyInput.value = apiKeys[selectedModel];
+                    setKeyPanelState(false, true);
+                } else {
+                    elements.apiKeyInput.value = '';
+                    setKeyPanelState(true, false);
+                }
+                updateCollapsedModelSummary();
+                loadCachedResultsForActiveTab();
+            });
         });
     });
 
@@ -114,7 +273,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         const model = elements.modelSelect.value;
         
         if (!apiKey) {
-            alert('Por favor, ingresa una API Key válida');
+            alert(t().errorInvalidKey);
             return;
         }
 
@@ -126,69 +285,142 @@ document.addEventListener("DOMContentLoaded", async () => {
                 apiKeys: apiKeys,
                 currentModel: model
             }, () => {
-                elements.apiKeyDiv.style.display = 'none';
-                elements.changeKeyButton.style.display = 'inline-block';
-                updateModelInfo(model);
-                alert('¡Configuración guardada!');
+                if (chrome.runtime.lastError) {
+                    alert(chrome.runtime.lastError.message);
+                    return;
+                }
+                setKeyPanelState(false, true);
+                alert(t().settingsSaved);
             });
         });
     });
 
     elements.changeKeyButton.addEventListener('click', () => {
-        elements.apiKeyDiv.style.display = 'block';
-        elements.changeKeyButton.style.display = 'none';
+        setSettingsExpanded(true, { editKey: true });
+    });
+
+    elements.settingsExpandToggle?.addEventListener('click', () => {
+        setSettingsExpanded(true);
     });
 
     elements.summarizeButton.addEventListener('click', async () => {
         try {
             setLoading(true);
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            
+
+            let tab;
+            try {
+                if (typeof chrome === 'undefined' || !chrome.tabs?.query) {
+                    throw new Error('NO_CHROME_TABS');
+                }
+                if (!chrome.runtime?.id) {
+                    throw new Error('CONTEXT_INVALIDATED');
+                }
+                const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+                tab = tabs[0];
+            } catch (e) {
+                setLoading(false);
+                const msg =
+                    e.message === 'CONTEXT_INVALIDATED' || e.message === 'NO_CHROME_TABS'
+                        ? t().errorExtensionContext
+                        : e.message || String(e);
+                fillResultSections('Error: ' + msg, t().notAvailable, t().notAvailable);
+                return;
+            }
+
+            if (!tab?.id) {
+                setLoading(false);
+                fillResultSections(
+                    'Error: No hay pestaña activa.',
+                    t().notAvailable,
+                    t().notAvailable
+                );
+                return;
+            }
+
             chrome.tabs.sendMessage(tab.id, { action: 'getPageContent' }, async (response) => {
+                const na = t().notAvailable;
+
+                if (chrome.runtime.lastError) {
+                    setLoading(false);
+                    const errMsg = chrome.runtime.lastError.message;
+                    const errLower = errMsg.toLowerCase();
+                    const invalidated =
+                        errLower.includes('extension context invalidated') ||
+                        errLower.includes('message port closed') ||
+                        errLower.includes('receiving end does not exist');
+                    fillResultSections(
+                        invalidated
+                            ? t().errorExtensionContext
+                            : 'Error: ' + errMsg,
+                        na,
+                        na
+                    );
+                    return;
+                }
+
                 if (!response) {
                     setLoading(false);
-                    elements.summaryDiv.textContent = "Error: No se pudo acceder al contenido de la página.";
-                    elements.analysisDiv.textContent = "No disponible";
-                    elements.commentsDiv.textContent = "No disponible";
+                    fillResultSections(
+                        'Error: No se pudo acceder al contenido de la página.',
+                        na,
+                        na
+                    );
                     return;
                 }
 
                 if (response.error) {
                     setLoading(false);
-                    elements.summaryDiv.textContent = response.error;
-                    elements.analysisDiv.textContent = "No disponible";
-                    elements.commentsDiv.textContent = "No disponible";
-                    elements.urlDiv.textContent = response.url;
+                    fillResultSections(response.error, na, na, response.url);
                     return;
                 }
 
                 const { content, comments, url } = response;
-                elements.urlDiv.textContent = url;
+                elements.sections.url.content.textContent = url;
 
                 chrome.storage.local.get(['apiKeys', 'currentModel'], async (result) => {
-                    const currentModel = result.currentModel || 'gemini';
+                    if (chrome.runtime.lastError) {
+                        setLoading(false);
+                        fillResultSections(
+                            'Error: ' + chrome.runtime.lastError.message,
+                            na,
+                            na
+                        );
+                        return;
+                    }
+
                     const apiKeys = result.apiKeys || {};
+                    const currentModel =
+                        elements.modelSelect.value || result.currentModel || 'gemini';
                     const apiKey = apiKeys[currentModel];
 
                     if (!apiKey) {
                         setLoading(false);
-                        alert('Por favor, ingresa tu API Key.');
+                        alert(t().errorNoKey);
                         return;
                     }
+
+                    setSettingsExpanded(false);
 
                     try {
                         const aiService = new window.AIService(currentModel, apiKey);
                         const analysis = await aiService.analyze(content, comments, url);
-                        
-                        // Actualizar solo el contenido manteniendo los títulos
-                        elements.sections.summary.content.textContent = analysis.summary;
-                        elements.sections.analysis.content.textContent = analysis.analysis;
-                        elements.sections.comments.content.textContent = analysis.commentsSummary;
-                        elements.sections.url.content.textContent = url;
+                        fillResultSections(
+                            analysis.summary,
+                            analysis.analysis,
+                            analysis.commentsSummary,
+                            url
+                        );
+                        if (shouldPersistAnalysis(analysis)) {
+                            await window.StorageManager.setPageAnalysisCache(url, currentModel, {
+                                summary: analysis.summary,
+                                analysis: analysis.analysis,
+                                commentsSummary: analysis.commentsSummary,
+                                url
+                            });
+                        }
                     } catch (error) {
-                        elements.sections.summary.content.textContent = 'Error: ' + error.message;
-                        elements.sections.analysis.content.textContent = 'No disponible';
-                        elements.sections.comments.content.textContent = 'No disponible';
+                        const na = t().notAvailable;
+                        fillResultSections('Error: ' + error.message, na, na);
                         console.error(error);
                     } finally {
                         setLoading(false);
@@ -197,18 +429,10 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
         } catch (error) {
             console.error('Error:', error);
-            elements.summaryDiv.textContent = 'Error: ' + error.message;
+            fillResultSections('Error: ' + error.message, t().notAvailable, t().notAvailable);
             setLoading(false);
         }
     });
-
-    function updateModelInfo(model) {
-        const modelInfoText = {
-            'gemini': '🤖 Google Gemini (Gratuito)',
-            'openai': '💰 OpenAI GPT-3.5 (Pago)'
-        };
-        elements.modelInfo.textContent = modelInfoText[model] || '';
-    }
 
     // Event listener para cambio de idioma
     elements.languageSelect.addEventListener('change', async (e) => {
@@ -234,7 +458,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
 
         // Actualizar placeholders y textos
-        if (elements.apiKeyInput) elements.apiKeyInput.placeholder = t.apiKeyPlaceholder;
+        if (elements.apiKeyInput) {
+            elements.apiKeyInput.placeholder = t.apiKeyPlaceholder;
+            elements.apiKeyInput.setAttribute('aria-label', t.apiKeyLabel);
+        }
         if (elements.saveKeyButton) elements.saveKeyButton.textContent = t.saveButton;
         if (elements.summarizeButton) elements.summarizeButton.textContent = t.summarizeButton;
         if (elements.changeKeyButton) elements.changeKeyButton.textContent = t.changeKeyButton;
@@ -243,6 +470,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (elements.modelSelect?.options) {
             elements.modelSelect.options[0].text = t.modelGemini;
             elements.modelSelect.options[1].text = t.modelOpenAI;
+            if (elements.modelSelect.options[2]) {
+                elements.modelSelect.options[2].text = t.modelClaude;
+            }
         }
 
         // Actualizar placeholders de resultados
@@ -252,6 +482,28 @@ document.addEventListener("DOMContentLoaded", async () => {
                 sectionElement.content.textContent = t[`${section}Placeholder`];
             }
         });
+
+        const closeBtn = document.getElementById('closeButton');
+        if (closeBtn && t.closeAria) {
+            closeBtn.setAttribute('aria-label', t.closeAria);
+        }
+
+        if (elements.settingsExpandToggle && t.settingsExpandAria) {
+            elements.settingsExpandToggle.setAttribute('aria-label', t.settingsExpandAria);
+        }
+
+        const resultsPanel = document.getElementById('results');
+        if (resultsPanel && t.resultsRegionAria) {
+            resultsPanel.setAttribute('aria-label', t.resultsRegionAria);
+        }
+
+        const donateLink = document.getElementById('donateLink');
+        if (donateLink && t.donateAria) {
+            donateLink.setAttribute('aria-label', t.donateAria);
+            donateLink.setAttribute('title', t.donateAria);
+        }
+
+        updateCollapsedModelSummary();
     }
 
     function isDefaultPlaceholder(text) {

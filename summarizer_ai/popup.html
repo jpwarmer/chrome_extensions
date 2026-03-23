@@ -4,63 +4,89 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TL;DR.ai</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
-<body style="overflow: hidden;">
-    <div id="popup">
-        <div class="top-corners">
-            <div id="language-selector">
-                <select id="languageSelect">
-                    <option value="es">Español</option>
-                    <option value="en">English</option>
-                </select>
+<body class="popup-body">
+    <div id="popup" class="app-shell">
+        <header class="app-toolbar" role="banner">
+            <div class="toolbar-start">
+                <span class="lang-label" data-i18n="languageSelect">Idioma:</span>
+                <div id="language-selector" class="lang-select-wrap">
+                    <select id="languageSelect" class="select-lang" aria-describedby="lang-hint">
+                        <option value="es">Español</option>
+                        <option value="en">English</option>
+                    </select>
+                </div>
             </div>
-            <button id="closeButton" class="close-button">×</button>
-        </div>
-        <h1 data-i18n="title">TL;DR.ai</h1>
-        <!-- Información del modelo actual -->
-        <div id="modelInfo" class="model-info"></div>
-        <!-- Sección de API Key y selección de modelo -->
-        <div id="apiKeyInput">
-            <label for="apiKey" data-i18n="apiKeyLabel">API Key:</label>
-            <input type="text" id="apiKey" placeholder="Ingresa tu API key">
-            <select id="modelSelect">
-                <option value="gemini">Google Gemini (Gratuito)</option>
-                <option value="openai">OpenAI GPT-3.5 (Pago)</option>
-            </select>
-            <button id="saveKey" data-i18n="saveButton">Guardar</button>
+            <!-- Sustituye href por tu enlace real (Ko-fi, PayPal, GitHub Sponsors, etc.) -->
+            <a id="donateLink" class="toolbar-donate" href="https://ko-fi.com" target="_blank" rel="noopener noreferrer">
+                <span data-i18n="donateLink">Donar</span>
+            </a>
+            <button type="button" id="closeButton" class="close-button" aria-label="Cerrar">×</button>
+        </header>
+
+        <div class="brand-block">
+            <h1 class="brand-title" data-i18n="title">TL;DR.ai</h1>
+            <p class="brand-tagline" data-i18n="tagline">Lectura inteligente en un clic</p>
         </div>
 
-        <!-- Sección de acciones -->
-        <div id="actions">
-            <button id="summarize" data-i18n="summarizeButton">Resumir</button>
-            <button id="changeKey" style="display: none;" data-i18n="changeKeyButton">Cambiar API Key</button>
-            <div id="loader" class="loader"></div>
+        <section class="panel settings-panel settings-panel--compact" aria-labelledby="settings-heading">
+            <h2 id="settings-heading" class="sr-only">API</h2>
+            <button type="button" id="settingsExpandToggle" class="settings-collapsed-bar" hidden>
+                <span class="settings-collapsed-bar__icon" aria-hidden="true">⚙</span>
+                <span class="settings-collapsed-bar__main">
+                    <span data-i18n="settingsExpandCta">Modelo y clave API</span>
+                    <span id="settingsModelSummary" class="settings-collapsed-bar__model"></span>
+                </span>
+            </button>
+            <div id="settingsExpandedBody" class="settings-expanded-body">
+                <div class="model-select-row">
+                    <label for="modelSelect" class="field-label field-label--inline" data-i18n="modelLabel">Modelo</label>
+                    <select id="modelSelect" class="field-input field-select field-input--compact">
+                        <option value="gemini">Google Gemini 3.1 Flash Lite</option>
+                        <option value="openai">OpenAI GPT-3.5 (Pago)</option>
+                        <option value="claude">Anthropic Claude (API)</option>
+                    </select>
+                </div>
+                <div id="apiKeyInput" class="settings-key-block">
+                    <label for="apiKey" class="sr-only" data-i18n="apiKeyLabel">API Key:</label>
+                    <div class="api-key-row">
+                        <input type="password" id="apiKey" class="field-input field-input-key field-input--compact" autocomplete="off" placeholder="" spellcheck="false">
+                        <button type="button" id="saveKey" class="btn btn-secondary btn-compact" data-i18n="saveButton">Guardar</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div id="actions" class="actions-row">
+            <button type="button" id="summarize" class="btn btn-primary" data-i18n="summarizeButton">Resumir</button>
+            <button type="button" id="changeKey" class="btn btn-ghost" hidden data-i18n="changeKeyButton">Cambiar API Key</button>
+            <div id="loader" class="loader" hidden aria-hidden="true"></div>
         </div>
 
-        <!-- Sección de resultados -->
-        <div id="results">
-            <h2 data-i18n="resultsTitle">Resultados</h2>
-            <div id="summary" class="result-section">
+        <section id="results" class="results-panel" role="region" aria-label="Salida del análisis">
+            <div id="summary" class="result-section result-section--summary">
                 <div class="section-header" data-i18n="summaryTitle">Resumen:</div>
                 <div class="section-content">El resumen aparecerá aquí...</div>
             </div>
-            <div id="analysis" class="result-section">
+            <div id="analysis" class="result-section result-section--analysis">
                 <div class="section-header" data-i18n="analysisTitle">Análisis:</div>
                 <div class="section-content">El análisis aparecerá aquí...</div>
             </div>
-            <div id="comments" class="result-section">
+            <div id="comments" class="result-section result-section--comments">
                 <div class="section-header" data-i18n="commentsTitle">Comentarios:</div>
                 <div class="section-content">El resumen de comentarios aparecerá aquí...</div>
             </div>
-            <div id="url" class="result-section">
+            <div id="url" class="result-section result-section--url">
                 <div class="section-header" data-i18n="urlTitle">URL:</div>
                 <div class="section-content">La URL aparecerá aquí...</div>
             </div>
-        </div>
+        </section>
     </div>
 
-    <!-- Scripts en orden correcto -->
     <script src="translations.js"></script>
     <script src="storage-manager.js"></script>
     <script src="ai-service.js"></script>
