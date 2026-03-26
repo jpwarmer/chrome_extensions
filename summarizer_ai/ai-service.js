@@ -13,81 +13,93 @@ const CLAUDE_MODEL = 'claude-3-5-sonnet-20241022';
 const MAX_MAIN_CONTENT_CHARS = 6000;
 const MAX_COMMENTS_CHARS = 2000;
 
-/**
- * Construye el texto de usuario compartido por Gemini y OpenAI.
- * @param {string} analysisLine2 - Instrucción concreta para la sección 2 (varía por proveedor).
- * @param {string} [formatHint] - Píe opcional (p. ej. recordatorio de formato para OpenAI).
- */
-/** Mensajes claros para la UI (español). */
-function openAiHttpMessage(status, apiMessage) {
-    if (status === 429) {
-        return 'Cuota o límite de uso de OpenAI alcanzado (429). Revisa facturación en platform.openai.com o prueba Google Gemini en el selector.';
+// Clase principal para manejar servicios de AI
+class AIService {
+    constructor(model, apiKey, locale = 'es') {
+        this.model = model;
+        this.apiKey = apiKey;
+        this.locale = ['en', 'es'].includes(locale) ? locale : 'es';
     }
-    if (status === 401) {
-        return 'API key de OpenAI inválida o sin permiso. Comprueba la clave en platform.openai.com.';
-    }
-    if (status === 403) {
-        return 'OpenAI rechazó la petición (403). Revisa el estado de la cuenta o restricciones del proyecto.';
-    }
-    if (apiMessage) {
-        return `OpenAI: ${apiMessage}`;
-    }
-    return `Error de OpenAI (HTTP ${status}).`;
-}
 
-function anthropicHttpMessage(status, apiMessage) {
-    if (status === 429) {
-        return 'Cuota o límite de Anthropic alcanzado (429). Revisa facturación en console.anthropic.com.';
+    tr(key) {
+        const bundle = window.translations?.[this.locale] || window.translations?.en;
+        const fallback = window.translations?.en;
+        if (bundle && bundle[key] !== undefined) {
+            return bundle[key];
+        }
+        if (fallback && fallback[key] !== undefined) {
+            return fallback[key];
+        }
+        return key;
     }
-    if (status === 401) {
-        return 'API key de Anthropic inválida. Crea una clave en console.anthropic.com.';
+
+    openAiHttpMessage(status, apiMessage) {
+        if (status === 429) {
+            return this.tr('aiErrOpenAI429');
+        }
+        if (status === 401) {
+            return this.tr('aiErrOpenAI401');
+        }
+        if (status === 403) {
+            return this.tr('aiErrOpenAI403');
+        }
+        if (apiMessage) {
+            return `${this.tr('aiErrOpenAIPrefix')} ${apiMessage}`;
+        }
+        return this.tr('aiErrOpenAIHttp').replace('{status}', String(status));
     }
-    if (status === 403) {
-        return 'Anthropic rechazó la petición (403). Revisa permisos del proyecto o región.';
+
+    anthropicHttpMessage(status, apiMessage) {
+        if (status === 429) {
+            return this.tr('aiErrAnthropic429');
+        }
+        if (status === 401) {
+            return this.tr('aiErrAnthropic401');
+        }
+        if (status === 403) {
+            return this.tr('aiErrAnthropic403');
+        }
+        if (apiMessage) {
+            return `${this.tr('aiErrAnthropicPrefix')} ${apiMessage}`;
+        }
+        return this.tr('aiErrAnthropicHttp').replace('{status}', String(status));
     }
-    if (apiMessage) {
-        return `Claude: ${apiMessage}`;
-    }
-    return `Error de Anthropic (HTTP ${status}).`;
-}
 
-function buildAnalysisPrompt(content, comments, url, analysisLine2, formatHint = '') {
-    const main = content.substring(0, MAX_MAIN_CONTENT_CHARS);
-    const comm = comments
-        ? comments.substring(0, MAX_COMMENTS_CHARS)
-        : 'No hay comentarios disponibles';
+    /**
+     * @param {string} analysisLine2 - Instrucción para la sección 2 (varía por proveedor).
+     * @param {string} [formatHint] - Píe opcional (p. ej. recordatorio de formato).
+     */
+    buildAnalysisPrompt(content, comments, url, analysisLine2, formatHint = '') {
+        const main = content.substring(0, MAX_MAIN_CONTENT_CHARS);
+        const comm = comments
+            ? comments.substring(0, MAX_COMMENTS_CHARS)
+            : this.tr('aiNoComments');
 
-    return `
-            Analiza el siguiente contenido web y proporciona tres secciones en español:
-            1. RESUMEN: Un resumen conciso del contenido principal
-            2. ANÁLISIS: ${analysisLine2}
-            3. COMENTARIOS: Un resumen de los puntos clave de los comentarios (si hay)
+        return `
+            ${this.tr('aiPromptIntro')}
+            ${this.tr('aiLine1')}
+            ${this.tr('aiLine2Prefix')} ${analysisLine2}
+            ${this.tr('aiLine3')}
 
-            URL: ${url}
+            ${this.tr('aiUrlLabel')} ${url}
 
-            CONTENIDO PRINCIPAL:
+            ${this.tr('aiMainContentLabel')}
             ${main}
 
-            COMENTARIOS:
+            ${this.tr('aiCommentsLabel')}
             ${comm}
             ${formatHint ? `\n${formatHint}` : ''}
         `.trim();
-}
-
-// Clase principal para manejar servicios de AI
-class AIService {
-    constructor(model, apiKey) {
-        this.model = model;
-        this.apiKey = apiKey;
     }
 
     async analyze(content, comments, url) {
-        // Validar contenido mínimo
         if (!content || content.trim().length < 50) {
             return {
-                summary: "No hay suficiente contenido para analizar.",
-                analysis: "No se puede realizar un análisis sin contenido suficiente.",
-                commentsSummary: comments ? "Hay comentarios pero no hay contenido principal para contextualizar." : "No hay comentarios disponibles."
+                summary: this.tr('aiInsufficientSummary'),
+                analysis: this.tr('aiInsufficientAnalysis'),
+                commentsSummary: comments
+                    ? this.tr('aiInsufficientCommentsWithComments')
+                    : this.tr('aiInsufficientCommentsNone')
             };
         }
 
@@ -101,28 +113,32 @@ class AIService {
     }
 
     async analyzeWithGemini(content, comments, url) {
-        const prompt = buildAnalysisPrompt(
+        const prompt = this.buildAnalysisPrompt(
             content,
             comments,
             url,
-            'Un análisis en busca de sesgos (politicos, sociales, etc), tambien advierte si crees que hay desinformacion, propaganda o informacion controvertida.'
+            this.tr('aiLine2Gemini')
         );
 
         try {
             const response = await fetch(`${GEMINI_GENERATE_URL}?key=${this.apiKey}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    contents: [{
-                        parts: [{
-                            text: prompt
-                        }]
-                    }],
+                    contents: [
+                        {
+                            parts: [
+                                {
+                                    text: prompt
+                                }
+                            ]
+                        }
+                    ],
                     generationConfig: {
                         temperature: 0.7,
-                        maxOutputTokens: 1000,
+                        maxOutputTokens: 1000
                     }
                 })
             });
@@ -136,8 +152,8 @@ class AIService {
                     (typeof data.error === 'string' ? data.error : '');
                 throw new Error(
                     msg
-                        ? `Gemini: ${msg}`
-                        : `Gemini rechazó la petición (HTTP ${response.status}).`
+                        ? `${this.tr('aiErrGeminiPrefix')} ${msg}`
+                        : this.tr('aiErrGeminiReject').replace('{status}', String(response.status))
                 );
             }
 
@@ -146,15 +162,16 @@ class AIService {
 
             if (data.promptFeedback?.blockReason) {
                 throw new Error(
-                    `Gemini bloqueó el contenido (${data.promptFeedback.blockReason}). Prueba otra página o acorta el texto.`
+                    this.tr('aiErrGeminiBlock').replace(
+                        '{reason}',
+                        String(data.promptFeedback.blockReason)
+                    )
                 );
             }
 
             if (!text) {
-                const reason = cand?.finishReason || 'sin texto';
-                throw new Error(
-                    `Gemini no devolvió texto útil (${reason}). Revisa la clave en Google AI Studio o prueba más tarde.`
-                );
+                const reason = cand?.finishReason || this.tr('aiErrFinishReasonNoText');
+                throw new Error(this.tr('aiErrGeminiNoText').replace('{reason}', String(reason)));
             }
 
             return this.parseSections(text);
@@ -162,9 +179,7 @@ class AIService {
             console.error('Error en API de Gemini:', error);
 
             if (error instanceof TypeError) {
-                throw new Error(
-                    'No se pudo conectar con Gemini. Comprueba red, bloqueadores o que generativelanguage.googleapis.com no esté bloqueado.'
-                );
+                throw new Error(this.tr('aiErrGeminiNetwork'));
             }
 
             if (error instanceof Error) {
@@ -175,12 +190,12 @@ class AIService {
     }
 
     async analyzeWithOpenAI(content, comments, url) {
-        const prompt = buildAnalysisPrompt(
+        const prompt = this.buildAnalysisPrompt(
             content,
             comments,
             url,
-            'Un análisis del estilo de escritura y posible sesgo',
-            'Por favor, asegúrate de mantener el formato exacto con los números y títulos de sección.'
+            this.tr('aiLine2OpenAI'),
+            this.tr('aiOpenAIFormatHint')
         );
 
         try {
@@ -188,14 +203,14 @@ class AIService {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${this.apiKey}`
+                    Authorization: `Bearer ${this.apiKey}`
                 },
                 body: JSON.stringify({
                     model: OPENAI_MODEL,
                     messages: [
                         {
                             role: 'system',
-                            content: 'Eres un asistente que analiza contenido web y proporciona resúmenes estructurados claros. Siempre mantienes el formato exacto con números y títulos de sección.'
+                            content: this.tr('aiOpenAISystem')
                         },
                         {
                             role: 'user',
@@ -211,11 +226,11 @@ class AIService {
 
             if (!response.ok) {
                 const msg = data.error?.message || '';
-                throw new Error(openAiHttpMessage(response.status, msg));
+                throw new Error(this.openAiHttpMessage(response.status, msg));
             }
 
             if (!data.choices?.[0]?.message?.content) {
-                throw new Error('Formato de respuesta inválido de OpenAI.');
+                throw new Error(this.tr('aiErrOpenAIInvalidFormat'));
             }
 
             return this.parseSections(data.choices[0].message.content);
@@ -223,9 +238,7 @@ class AIService {
             console.error('Error completo de OpenAI:', error);
 
             if (error instanceof TypeError) {
-                throw new Error(
-                    'No se pudo conectar con OpenAI (red bloqueada o sin conexión). Si en consola aparece ERR_BLOCKED_BY_CLIENT, suele ser un bloqueador (uBlock, Privacy Badger, Brave Shields): permite api.openai.com o desactívalo al probar la extensión.'
-                );
+                throw new Error(this.tr('aiErrOpenAINetwork'));
             }
 
             if (error instanceof Error) {
@@ -236,17 +249,15 @@ class AIService {
     }
 
     async analyzeWithAnthropic(content, comments, url) {
-        const prompt = buildAnalysisPrompt(
+        const prompt = this.buildAnalysisPrompt(
             content,
             comments,
             url,
-            'Un análisis del estilo de escritura, posible sesgo y tono; señala si detectas desinformación o argumentación muy sesgada.',
-            'Mantén el formato exacto con 1. RESUMEN, 2. ANÁLISIS y 3. COMENTARIOS y títulos en mayúsculas.'
+            this.tr('aiLine2Claude'),
+            this.tr('aiClaudeFormatHint')
         );
 
-        const systemPrompt =
-            'Eres un asistente que analiza páginas web y devuelve tres secciones numeradas en español. ' +
-            'Usa siempre el formato: 1. RESUMEN:, 2. ANÁLISIS:, 3. COMENTARIOS:.';
+        const systemPrompt = this.tr('aiClaudeSystem');
 
         try {
             const response = await fetch(ANTHROPIC_MESSAGES_URL, {
@@ -278,7 +289,7 @@ class AIService {
                     (typeof data.error === 'string' ? data.error : '') ||
                     (data.error && data.error.type) ||
                     '';
-                throw new Error(anthropicHttpMessage(response.status, msg));
+                throw new Error(this.anthropicHttpMessage(response.status, msg));
             }
 
             const blocks = data.content;
@@ -288,9 +299,7 @@ class AIService {
             const text = textBlock?.text;
 
             if (!text) {
-                throw new Error(
-                    'Claude no devolvió texto. Revisa la clave en console.anthropic.com o el modelo.'
-                );
+                throw new Error(this.tr('aiErrClaudeNoText'));
             }
 
             return this.parseSections(text);
@@ -298,9 +307,7 @@ class AIService {
             console.error('Error en API de Anthropic:', error);
 
             if (error instanceof TypeError) {
-                throw new Error(
-                    'No se pudo conectar con Anthropic. Comprueba red, bloqueadores o que api.anthropic.com no esté bloqueado.'
-                );
+                throw new Error(this.tr('aiErrAnthropicNetwork'));
             }
 
             if (error instanceof Error) {
@@ -316,11 +323,9 @@ class AIService {
             analysis: '',
             commentsSummary: ''
         };
-        
-        // Eliminar los asteriscos y limpiar el formato
+
         response = response.replace(/\*\*/g, '');
-        
-        // Buscar las secciones usando los encabezados numéricos
+
         const summaryMatch = response.match(/1\.\s*(?:RESUMEN|SUMMARY)[:\s]+([\s\S]+?)(?=2\.|$)/i);
         const analysisMatch = response.match(/2\.\s*(?:ANÁLISIS|ANALYSIS)[:\s]+([\s\S]+?)(?=3\.|$)/i);
         const commentsMatch = response.match(/3\.\s*(?:COMENTARIOS|COMMENTS)[:\s]+([\s\S]+?)$/i);
@@ -335,14 +340,18 @@ class AIService {
             sections.commentsSummary = commentsMatch[1].trim();
         }
 
-        // Si no se encontró alguna sección, usar mensajes por defecto
-        if (!sections.summary) sections.summary = "No se pudo extraer el resumen.";
-        if (!sections.analysis) sections.analysis = "No se pudo extraer el análisis.";
-        if (!sections.commentsSummary) sections.commentsSummary = "No se encontraron comentarios para analizar.";
+        if (!sections.summary) {
+            sections.summary = this.tr('aiParseNoSummary');
+        }
+        if (!sections.analysis) {
+            sections.analysis = this.tr('aiParseNoAnalysis');
+        }
+        if (!sections.commentsSummary) {
+            sections.commentsSummary = this.tr('aiParseNoComments');
+        }
 
         return sections;
     }
 }
 
-// Hacer la clase disponible globalmente
 window.AIService = AIService;

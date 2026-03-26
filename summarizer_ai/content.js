@@ -18,6 +18,19 @@ const COMMENT_KEYWORD_SELECTORS = [
     '[aria-label*="comentario" i]',
 ].join(', ');
 
+function contentTr(locale, key) {
+    const l = ['en', 'es'].includes(locale) ? locale : 'es';
+    const bundle = window.translations?.[l] || window.translations?.en;
+    const fallback = window.translations?.en;
+    if (bundle && bundle[key] !== undefined) {
+        return bundle[key];
+    }
+    if (fallback && fallback[key] !== undefined) {
+        return fallback[key];
+    }
+    return key;
+}
+
 /** Evita bloques que suelen ser layout (no el comentario en sí). */
 function shouldSkipCommentElement(classList) {
     const cls = classList.toString().toLowerCase();
@@ -82,10 +95,11 @@ function extractComments() {
 // Escuchar mensajes del popup de manera más eficiente
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "getPageContent") {
+        const loc = request.locale || 'es';
         // Agregar un timeout de 10 segundos
         const timeoutId = setTimeout(() => {
             sendResponse({
-                error: "No se pudo obtener respuesta. Por favor, intente nuevamente más tarde.",
+                error: contentTr(loc, 'pageContentErrorTimeout'),
                 url: window.location.href
             });
         }, PAGE_CONTENT_TIMEOUT_MS);
@@ -100,7 +114,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             
             if (!content || content.length < MIN_PAGE_CONTENT_LENGTH) {
                 sendResponse({
-                    error: "No se encontró suficiente contenido para analizar en esta página.",
+                    error: contentTr(loc, 'pageContentErrorShort'),
                     url: url
                 });
                 return true;
@@ -120,7 +134,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             // Limpiar el timeout en caso de error
             clearTimeout(timeoutId);
             sendResponse({
-                error: "Error al procesar el contenido. Por favor, intente nuevamente más tarde.",
+                error: contentTr(loc, 'pageContentErrorProcess'),
                 url: window.location.href
             });
         }

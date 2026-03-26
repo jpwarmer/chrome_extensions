@@ -83,10 +83,12 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (low.startsWith('error:')) {
             return false;
         }
-        if (s.includes('No hay suficiente contenido para analizar')) {
+        const insEs = window.translations.es?.aiInsufficientSummary;
+        const insEn = window.translations.en?.aiInsufficientSummary;
+        if (insEs && s.includes(insEs)) {
             return false;
         }
-        if (s.includes('Not enough content')) {
+        if (insEn && s.includes(insEn)) {
             return false;
         }
         return true;
@@ -323,21 +325,24 @@ document.addEventListener("DOMContentLoaded", async () => {
                     e.message === 'CONTEXT_INVALIDATED' || e.message === 'NO_CHROME_TABS'
                         ? t().errorExtensionContext
                         : e.message || String(e);
-                fillResultSections('Error: ' + msg, t().notAvailable, t().notAvailable);
+                fillResultSections(`${t().errorPrefix} ${msg}`, t().notAvailable, t().notAvailable);
                 return;
             }
 
             if (!tab?.id) {
                 setLoading(false);
                 fillResultSections(
-                    'Error: No hay pestaña activa.',
+                    `${t().errorPrefix} ${t().errorNoActiveTab}`,
                     t().notAvailable,
                     t().notAvailable
                 );
                 return;
             }
 
-            chrome.tabs.sendMessage(tab.id, { action: 'getPageContent' }, async (response) => {
+            chrome.tabs.sendMessage(
+                tab.id,
+                { action: 'getPageContent', locale: elements.languageSelect.value },
+                async (response) => {
                 const na = t().notAvailable;
 
                 if (chrome.runtime.lastError) {
@@ -349,9 +354,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         errLower.includes('message port closed') ||
                         errLower.includes('receiving end does not exist');
                     fillResultSections(
-                        invalidated
-                            ? t().errorExtensionContext
-                            : 'Error: ' + errMsg,
+                        invalidated ? t().errorExtensionContext : `${t().errorPrefix} ${errMsg}`,
                         na,
                         na
                     );
@@ -360,11 +363,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
                 if (!response) {
                     setLoading(false);
-                    fillResultSections(
-                        'Error: No se pudo acceder al contenido de la página.',
-                        na,
-                        na
-                    );
+                    fillResultSections(`${t().errorPrefix} ${t().errorNoPageAccess}`, na, na);
                     return;
                 }
 
@@ -381,7 +380,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     if (chrome.runtime.lastError) {
                         setLoading(false);
                         fillResultSections(
-                            'Error: ' + chrome.runtime.lastError.message,
+                            `${t().errorPrefix} ${chrome.runtime.lastError.message}`,
                             na,
                             na
                         );
@@ -402,7 +401,11 @@ document.addEventListener("DOMContentLoaded", async () => {
                     setSettingsExpanded(false);
 
                     try {
-                        const aiService = new window.AIService(currentModel, apiKey);
+                        const aiService = new window.AIService(
+                            currentModel,
+                            apiKey,
+                            elements.languageSelect.value
+                        );
                         const analysis = await aiService.analyze(content, comments, url);
                         fillResultSections(
                             analysis.summary,
@@ -420,7 +423,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                         }
                     } catch (error) {
                         const na = t().notAvailable;
-                        fillResultSections('Error: ' + error.message, na, na);
+                        fillResultSections(`${t().errorPrefix} ${error.message}`, na, na);
                         console.error(error);
                     } finally {
                         setLoading(false);
@@ -429,7 +432,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
         } catch (error) {
             console.error('Error:', error);
-            fillResultSections('Error: ' + error.message, t().notAvailable, t().notAvailable);
+            fillResultSections(`${t().errorPrefix} ${error.message}`, t().notAvailable, t().notAvailable);
             setLoading(false);
         }
     });
